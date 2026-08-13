@@ -6,7 +6,7 @@ payout setup, and an ops dashboard tying it all together.
 
 **Live app:** https://creatorjobs-pearl.vercel.app
 **Repo:** https://github.com/pranathi6678/creatorjobs
-**Video walkthrough:** _(Loom link goes here — see LOOM_SCRIPT.md for the talking track)_
+**Video walkthrough:** _(Loom link goes here)_
 
 There's a live demo dataset on the deployed dashboard (`/dashboard`) from
 end-to-end smoke testing — a seller, listing, and an order taken through
