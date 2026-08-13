@@ -84,6 +84,16 @@ rejected, not applied.
   and any error — visible on `/dashboard`.
 - **Safe state transitions**: see order state machine above.
 
+Verified against a real, live Whop business account (not just local synthetic
+tests): a `payment.succeeded` test event sent from the Whop dashboard's
+webhook "Test" action was correctly signature-verified and logged
+(`{"ok":true,"applied":false,"reason":"no order_id in metadata"}` — a 200,
+correctly declining to touch order state since Whop's generic test payload
+isn't tied to a real order). This also caught a real bug during setup: Whop's
+webhook secret is an opaque `ws_`-prefixed string, not base64 as an earlier
+draft assumed — fixed in `verifyWebhookSignature` once tested against a real
+secret instead of only a synthetic one.
+
 ## Setup
 
 ```bash
