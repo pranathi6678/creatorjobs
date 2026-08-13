@@ -34,6 +34,9 @@ export default function SellerActions({ seller, autoSync }: { seller: Seller; au
   }
 
   useEffect(() => {
+    // Deliberately fire-and-forget on mount when returning from Whop's hosted
+    // KYC flow, to pull the seller's just-updated verification status.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (autoSync) sync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSync]);
