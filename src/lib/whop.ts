@@ -93,27 +93,24 @@ export async function createAccountLink(params: {
   });
 }
 
-// --- Payments -----------------------------------------------------------------------
-// POST /payments. We use the "existing plan + confirmation token" shape, where the
-// confirmation token comes from the buyer completing the embedded/hosted checkout
-// widget client-side (see CheckoutForm). order.id is attached as metadata so the
-// payment.succeeded webhook can be matched back to our order without guessing.
-// Docs: api-reference/payments/create-payment
-export async function createPayment(params: {
-  companyId: string;
+// --- Checkout -----------------------------------------------------------------------
+// POST /checkout_configurations against an existing dashboard-created plan_id.
+// Returns a real purchase_url with our order id embedded in metadata, which Whop
+// carries through onto the resulting payment/membership — so the payment.succeeded
+// webhook can match it back to our order via event.data.metadata.order_id.
+// Docs: api-reference/checkout-configurations/create-checkout-configuration
+export async function createCheckoutConfiguration(params: {
   planId: string;
-  confirmationToken: string;
-  email: string;
   orderId: string;
+  redirectUrl: string;
 }) {
-  return whopFetch<{ id: string; status: string }>("/payments", {
+  return whopFetch<{ id: string; purchase_url: string }>("/checkout_configurations", {
     method: "POST",
     body: {
-      company_id: params.companyId,
       plan_id: params.planId,
-      confirmation_token: params.confirmationToken,
-      email: params.email,
+      mode: "payment",
       metadata: { order_id: params.orderId },
+      redirect_url: params.redirectUrl,
     },
   });
 }

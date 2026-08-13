@@ -10,8 +10,10 @@ import { useRouter } from "next/navigation";
 //
 // 1. Real checkout: if the listing has a Whop Plan ID (created in the Whop
 //    dashboard — see README "API blockers" for why we don't create plans via
-//    the experimental API), we send the buyer to Whop's hosted checkout for
-//    that plan with our order id in the return URL.
+//    the API), /api/checkout/create calls POST /checkout_configurations
+//    server-side and returns a real purchase_url with our order id already
+//    embedded in metadata — Whop carries that through onto the resulting
+//    payment automatically.
 // 2. Test payment: no Plan ID configured (e.g. this demo environment has no
 //    live Whop credentials yet) — a clearly-labeled simulate button exercises
 //    the exact same webhook-processing code path via /api/webhooks/simulate.
@@ -35,8 +37,8 @@ export default function CheckoutForm({
       body: JSON.stringify({ listingId, buyerEmail: email, buyerName: name }),
     });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error ?? "Could not start checkout");
-    return data.order as { id: string };
+    if (!res.ok && !data.order) throw new Error(data.error ?? "Could not start checkout");
+    return data as { order: { id: string }; purchaseUrl: string | null; error?: string };
   }
 
   async function payWithWhop(e: React.FormEvent) {
@@ -44,12 +46,9 @@ export default function CheckoutForm({
     setLoading("real");
     setError(null);
     try {
-      const order = await createOrder();
-      const origin = window.location.origin;
-      const checkoutUrl = `https://whop.com/checkout/${whopPlanId}?metadata[order_id]=${order.id}&redirect_url=${encodeURIComponent(
-        `${origin}/orders/${order.id}`
-      )}`;
-      window.location.href = checkoutUrl;
+      const { purchaseUrl, error: checkoutError } = await createOrder();
+      if (!purchaseUrl) throw new Error(checkoutError ?? "Could not create Whop checkout");
+      window.location.href = purchaseUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setLoading(null);
@@ -61,7 +60,7 @@ export default function CheckoutForm({
     setLoading("test");
     setError(null);
     try {
-      const order = await createOrder();
+      const { order } = await createOrder();
       await fetch("/api/webhooks/simulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
