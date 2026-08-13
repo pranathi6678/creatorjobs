@@ -27,10 +27,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-neutral-50 text-neutral-900">
         <header className="border-b border-neutral-200 bg-white">
           <nav className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-            <Link href="/" className="text-lg font-semibold">
+            <Link href="/" className="text-lg font-semibold text-neutral-900">
               CreatorJobs
             </Link>
-            <div className="flex gap-6 text-sm">
+            <div className="flex gap-6 text-sm text-neutral-700">
               <Link href="/" className="hover:underline">
                 Browse
               </Link>

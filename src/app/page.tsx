@@ -28,9 +28,9 @@ export default async function HomePage() {
               <div className="text-xs uppercase tracking-wide text-neutral-400">
                 by {listing.seller_name}
               </div>
-              <div className="mt-1 font-medium">{listing.title}</div>
+              <div className="mt-1 font-medium text-neutral-900">{listing.title}</div>
               <p className="mt-1 line-clamp-2 text-sm text-neutral-500">{listing.description}</p>
-              <div className="mt-3 font-semibold">
+              <div className="mt-3 font-semibold text-neutral-900">
                 ${(listing.price_cents / 100).toFixed(2)} {listing.currency.toUpperCase()}
               </div>
             </Link>
