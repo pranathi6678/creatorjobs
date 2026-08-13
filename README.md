@@ -136,15 +136,23 @@ had to be used instead. Three specific gaps I hit in `docs.whop.com`:
    shape, e.g. `2026-07-01`), which is what `src/lib/whop.ts` sends on every
    request — that's the Stable mechanism, used because the Experimental
    opt-in mechanism isn't documented anywhere I could find.
-2. **No documented server-side "create checkout session" endpoint.** Payments
-   (`POST /payments`) require a `confirmation_token` that's produced
-   client-side by completing Whop's checkout widget against a **Plan ID
-   created in the Whop dashboard** — there's no documented API to create that
-   plan/checkout session programmatically. So `CheckoutForm.tsx` follows the
-   documented pattern (redirect to Whop's hosted checkout for a
-   dashboard-created `plan_id`) rather than trying to synthesize a checkout
-   session from scratch. This is also why the webhook, not the client-side
-   redirect, is treated as the source of truth for "did payment happen" —
+2. **Plan creation itself isn't documented as an API call** — a listing needs
+   a Whop Plan ID (`plan_xxx`) created in the dashboard's Products/Plans UI
+   first; I found no documented endpoint to create a sellable plan/product
+   from scratch via the API. Once you have a `plan_id`, though, turning it
+   into an actual payable checkout *is* a documented, working API —
+   `POST /checkout_configurations` (`src/lib/whop.ts: createCheckoutConfiguration`),
+   which returns a real `purchase_url` with our `order_id` embedded in
+   `metadata` and our `redirect_url` set, so Whop carries the order id through
+   onto the resulting payment automatically. I initially missed this endpoint
+   and had `CheckoutForm.tsx` constructing a hosted-checkout URL by guessing
+   at query-param syntax (`?metadata[order_id]=...`) — that was never verified
+   against real Whop behavior. Caught it, found the real endpoint, and fixed
+   it; verified the fix by hitting it with a deliberately-invalid `plan_id`
+   against the live API and getting back a clean `404 Plan not found` rather
+   than a permissions or shape error — confirming the request itself (auth,
+   fields, scope) is correct. The webhook, not the client-side redirect, is
+   still treated as the source of truth for "did payment happen" regardless —
    the client-side completion callback is never trusted on its own.
 3. **No `payout.*` webhook event.** The documented webhook event list covers
    `payment.*`, `membership.*`, and `ledger_account.funds_available`, but
@@ -153,6 +161,36 @@ had to be used instead. Three specific gaps I hit in `docs.whop.com`:
    response) rather than via webhook callback — in production I'd add a
    polling reconciliation job against `GET /payouts/{id}` to catch anything
    that changes state after the initial response.
+
+## Verified against a live Whop account
+
+Everything below was tested against a real, live Whop business account and
+the deployed Vercel app, not just local/synthetic data:
+
+- **Seller onboarding**: `POST /api/seller` created a real connected account
+  (`biz_...`) under the platform company and returned a working, real Whop
+  KYC onboarding URL.
+- **Checkout**: `POST /api/checkout/create` correctly calls
+  `POST /checkout_configurations` and surfaces Whop's real response — verified
+  via a deliberately-invalid `plan_id` returning `404 Plan not found` (i.e.
+  the request shape/auth is correct; only a real plan is needed to go further).
+- **Webhooks**: a real `payment.succeeded` event sent via Whop's dashboard
+  "Test" action was correctly signature-verified, deduplicated, and logged.
+
+**API key scope, built by iterative least-privilege testing rather than
+granting broad access**: Whop caps a single API key at 160 permission
+"actions," and the built-in `Admin` role template already exceeds that cap on
+its own — so a key can't just inherit `Admin`. The key backing this app has
+9 explicitly-chosen scopes, arrived at by making real requests and reading
+Whop's own `"not authorized to scope to X"` error messages rather than
+guessing: `company:balance:read`, `company:basic:read`
+("Read business information"), `company:create` ("Create child companies"),
+`payment:charge`, `payment:read`, and the full `Payouts` category (creating a
+connected account touches most of it — `account:read`, `account:update`,
+`withdraw_funds`, `withdrawal:read`, plus destination/transfer read scopes),
+and `developer:manage_webhook`. This is smaller and more auditable than
+handing the key blanket Admin access, which is what I'd recommend to a real
+customer going through this same setup.
 
 ## Why raw REST instead of `@whop/sdk`
 
